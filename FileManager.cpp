@@ -1,19 +1,16 @@
+#include "pch.h"
 #include "FileManager.h"
 #include <iomanip>
 #include <iostream>
-#include "Planist.h"
-#include "Processes.h"
+
+using namespace std;
 
 FileManager fm;
 
-//Aliasy
 using u_int = unsigned int;
 using u_short_int = unsigned short int;
 using u_char = unsigned char;
 
-
-
-//Operatory
 ostream& operator << (ostream& os, const vector<string>& strVec) {
 	for (const string& str : strVec) {
 		os << str << '\n';
@@ -34,31 +31,25 @@ bool operator == (const tm& time1, const tm& time2) {
 		time2.tm_wday && time1.tm_yday == time2.tm_yday && time1.tm_year == time2.tm_year;
 }
 
-//G³ówne metody
 int FileManager::file_create(const string& fileName, const string& procName) {
-	
+
 	//Sprawdzenie poprawnosci
 	{
 		if (fileName.empty()) {
-			return FILE_ERROR_EMPTY_NAME; 
-			}
+			return FILE_ERROR_EMPTY_NAME;
+		}
 
 		if (!check_if_name_used(fileName)) {
 			return FILE_ERROR_NAME_USED;
 		}
-		
-		// if (fileSystem.rootDirectory.size() >= INODE_NUMBER_LIMIT) {
-			// return FILE_ERROR_NO_INODES_LEFT;
-		// }
 	}
 
 	//Jêzeli dzia³a
 	{
 		if (!check_if_name_used(fileName)) {
-			// const u_int inodeId = fileSystem.get_free_inode_id();
-			//Dodanie pliku do katalogu g³ównego
-			// fileSystem.rootDirectory[fileName] = inodeId;
-			// fileSystem.inodeBitVector[inodeId] = true;
+			const u_int inodeId = fileSystem.get_free_inode_id();
+			fileSystem.rootDirectory[fileName] = inodeId;
+			fileSystem.inodeBitVector[inodeId] = true;
 		}
 
 		return file_open(fileName, procName, FILE_OPEN_W_MODE);
@@ -66,17 +57,17 @@ int FileManager::file_create(const string& fileName, const string& procName) {
 }
 
 int FileManager::file_write(const string& fileName, const string& procName, const string& data) {
-	
+
 	Inode* inode;
 
 	//Czêœæ sprawdzaj¹ca
 	{
-		if (fileName.empty()) { 
-		return FILE_ERROR_EMPTY_NAME; 
+		if (fileName.empty()) {
+			return FILE_ERROR_EMPTY_NAME;
 		}
 
-		if (data.size() > MAX_DATA_SIZE) { 
-		return FILE_ERROR_DATA_TOO_BIG; 
+		if (data.size() > MAX_DATA_SIZE) {
+			return FILE_ERROR_DATA_TOO_BIG;
 		}
 
 		if (data.size() > BLOCK_INDEX_NUMBER * BLOCK_SIZE &&
@@ -85,33 +76,19 @@ int FileManager::file_write(const string& fileName, const string& procName, cons
 		}
 
 		//Iterator zwracany podczas przeszukiwania obecnego katalogu za plikiem o podanej nazwie
-		// const auto fileIterator = fileSystem.rootDirectory.find(fileName);
-		// if (fileIterator == fileSystem.rootDirectory.end()) { 
-		// return FILE_ERROR_NOT_FOUND; 
-		// }
-		// inode = &fileSystem.inodeTable[fileIterator->second];
-
-
-		if (!inode->opened) { 
-		return FILE_ERROR_NOT_OPENED; 
+		const auto fileIterator = fileSystem.rootDirectory.find(fileName);
+		if (fileIterator == fileSystem.rootDirectory.end()) {
+			return FILE_ERROR_NOT_FOUND;
 		}
+		inode = &fileSystem.inodeTable[fileIterator->second];
 
-		if (accessedFiles.find(pair(fileName, procName)) == accessedFiles.end()) {
-			return FILE_ERROR_NOT_OPENED;
-		}
-
-		if (!accessedFiles[pair(fileName, procName)].get_flags()[WRITE_FLAG]) { 
-		return FILE_ERROR_NOT_W_MODE; 
-		}
-
-		if (data.size() > fileSystem.freeSpace - inode->blocksOccupied*BLOCK_SIZE) { 
-		return FILE_ERROR_DATA_TOO_BIG; 
+		if (data.size() > fileSystem.freeSpace - inode->blocksOccupied*BLOCK_SIZE) {
+			return FILE_ERROR_DATA_TOO_BIG;
 		}
 	}
 
 	//Czêœæ dzia³aj¹ca
 	file_deallocate(inode);
-	file_write(inode, &accessedFiles[pair(fileName, procName)], data);
 	return FILE_ERROR_NONE;
 }
 
@@ -120,8 +97,9 @@ int FileManager::file_append(const string& fileName, const string& procName, con
 
 	//Czêœæ sprawdzaj¹ca
 	{
-		if (fileName.empty()) { 
-		return FILE_ERROR_EMPTY_NAME; }
+		if (fileName.empty()) {
+			return FILE_ERROR_EMPTY_NAME;
+		}
 
 		if (data.size() > BLOCK_INDEX_NUMBER * BLOCK_SIZE && fileSystem.freeSpace < calculate_needed_blocks(data.size())*BLOCK_SIZE + BLOCK_SIZE) {
 			return FILE_ERROR_DATA_TOO_BIG;
@@ -130,30 +108,20 @@ int FileManager::file_append(const string& fileName, const string& procName, con
 		//Iterator zwracany podczas przeszukiwania obecnego katalogu za plikiem o podanej nazwie
 		const auto fileIterator = fileSystem.rootDirectory.find(fileName);
 
-		if (fileIterator == fileSystem.rootDirectory.end()) { 
-		return FILE_ERROR_NOT_FOUND; 
+		if (fileIterator == fileSystem.rootDirectory.end()) {
+			return FILE_ERROR_NOT_FOUND;
 		}
 		inode = &fileSystem.inodeTable[fileIterator->second];
 
-		if (!inode->opened) { 
-		return FILE_ERROR_NOT_OPENED; 
+		if (inode->realSize + data.size() > MAX_DATA_SIZE) {
+			return FILE_ERROR_DATA_TOO_BIG;
 		}
 
-		if (!accessedFiles[pair(fileName, procName)].get_flags()[WRITE_FLAG]) {
-			return FILE_ERROR_NOT_W_MODE; 
-			}
-
-		if (inode->realSize + data.size() > MAX_DATA_SIZE) {
-			return FILE_ERROR_DATA_TOO_BIG; 
-			}
-
 		if (data.size() > fileSystem.freeSpace) {
-			return FILE_ERROR_DATA_TOO_BIG; 
-			}
+			return FILE_ERROR_DATA_TOO_BIG;
+		}
 	}
 
-	//Czêœæ dzia³aj¹ca
-	file_append(inode, &accessedFiles[pair(fileName, procName)], data);
 	return FILE_ERROR_NONE;
 }
 
@@ -164,25 +132,16 @@ int FileManager::file_read(const string& fileName, const string& procName, const
 
 	//Czêœæ sprawdzaj¹ca
 	{
-		if (fileName.empty()) { 
-		return FILE_ERROR_EMPTY_NAME; 
+		if (fileName.empty()) {
+			return FILE_ERROR_EMPTY_NAME;
 		}
 
-		if (fileIterator == fileSystem.rootDirectory.end()) { 
-		return FILE_ERROR_NOT_FOUND; 
+		if (fileIterator == fileSystem.rootDirectory.end()) {
+			return FILE_ERROR_NOT_FOUND;
 		}
 
-		if (accessedFiles.find(pair(fileName, procName)) == accessedFiles.end()) { 
-		return FILE_ERROR_NOT_OPENED; 
-		}
-
-		if (!accessedFiles[pair(fileName, procName)].get_flags()[READ_FLAG]) { 
-		return FILE_ERROR_NOT_R_MODE; 
-		}
 	}
 
-	//Czêœæ dzia³aj¹ca
-	result = accessedFiles[pair(fileName, procName)].read(byteNumber);
 	return FILE_ERROR_NONE;
 }
 
@@ -191,12 +150,12 @@ int FileManager::file_read_all(const string& fileName, const string& procName, s
 
 	//Czêœæ sprawdzaj¹ca
 	{
-		if (fileName.empty()) { 
-		return FILE_ERROR_EMPTY_NAME; 
+		if (fileName.empty()) {
+			return FILE_ERROR_EMPTY_NAME;
 		}
 
-		if (fileIterator == fileSystem.rootDirectory.end()) { 
-		return FILE_ERROR_NOT_FOUND; 
+		if (fileIterator == fileSystem.rootDirectory.end()) {
+			return FILE_ERROR_NOT_FOUND;
 		}
 	}
 
@@ -209,20 +168,16 @@ int FileManager::file_delete(const string& fileName, const string& procName) {
 
 	//Czêœæ sprawdzaj¹ca
 	{
-		if (fileName.empty()) { 
-		return FILE_ERROR_EMPTY_NAME; 
+		if (fileName.empty()) {
+			return FILE_ERROR_EMPTY_NAME;
 		}
 
 		if (fileIterator == fileSystem.rootDirectory.end()) {
-			return FILE_ERROR_NOT_FOUND; 
-			}
+			return FILE_ERROR_NOT_FOUND;
+		}
 
-		if (file_accessing_proc_count(fileName) == 1 && accessedFiles.find(pair(fileName, procName)) != accessedFiles.end()) 
-		{}
-		else if (file_accessing_proc_count(fileName) == 0) 
-		{}
-		else if (accessedFiles.find(pair(fileName, procName)) != accessedFiles.end()) { 
-		return FILE_ERROR_OPENED; 
+		else if (file_accessing_proc_count(fileName) == 0)
+		{
 		}
 	}
 
@@ -245,28 +200,23 @@ int FileManager::file_open(const string& fileName, const string& procName, const
 
 	//Czêœæ sprawdzaj¹ca
 	{
-		if (fileName.empty()) { 
-		return FILE_ERROR_DATA_TOO_BIG; 
+		if (fileName.empty()) {
+			return FILE_ERROR_DATA_TOO_BIG;
 		}
 
 		//Iterator zwracany podczas przeszukiwania obecnego katalogu za plikiem o podanej nazwie
 		const auto fileIterator = fileSystem.rootDirectory.find(fileName);
 
-		if (fileIterator == fileSystem.rootDirectory.end()) { 
-		return FILE_ERROR_NOT_FOUND; 
+		if (fileIterator == fileSystem.rootDirectory.end()) {
+			return FILE_ERROR_NOT_FOUND;
 		}
 		file = &fileSystem.inodeTable[fileIterator->second];
 	}
 
 	//Czêœæ dzia³aj¹ca
 	{
-		if (accessedFiles.find(pair(fileName, procName)) != accessedFiles.end()) {
-			accessedFiles.erase(pair(fileName, procName));
-			file->sem.set_value(file->sem.get_value() + 1);
-		}
 
 		if (file_accessing_proc_count(fileName) == 0) {
-			file->opened = false;
 		}
 
 		return FILE_ERROR_NONE;
@@ -278,22 +228,21 @@ int FileManager::file_close(const string& fileName, const string& procName) {
 
 	//Czêœæ sprawdzaj¹ca
 	{
-		if (fileName.empty()) { 
-		return FILE_ERROR_EMPTY_NAME; 
+		if (fileName.empty()) {
+			return FILE_ERROR_EMPTY_NAME;
 		}
 
-		if (fileIterator == fileSystem.rootDirectory.end()) { 
-		return FILE_ERROR_NOT_FOUND; 
+		if (fileIterator == fileSystem.rootDirectory.end()) {
+			return FILE_ERROR_NOT_FOUND;
 		}
 	}
 
 	//Czêœæ dzia³aj¹ca
 	{
-		accessedFiles.erase(pair(fileName, procName));
+	
 		Inode* file = &fileSystem.inodeTable[fileIterator->second];
 
 		if (file_accessing_proc_count(fileName) == 0) {
-			file->opened = false;
 		}
 
 		return FILE_ERROR_NONE;
@@ -301,11 +250,11 @@ int FileManager::file_close(const string& fileName, const string& procName) {
 }
 
 bool FileManager::file_exists(const std::string& fileName) {
-	if (fileSystem.rootDirectory.find(fileName) != fileSystem.rootDirectory.end()) { 
-	return true; 
+	if (fileSystem.rootDirectory.find(fileName) != fileSystem.rootDirectory.end()) {
+		return true;
 	}
-	else { 
-	return false; 
+	else {
+		return false;
 	}
 }
 
@@ -314,13 +263,13 @@ bool FileManager::file_exists(const std::string& fileName) {
 
 int FileManager::file_close_all(const string& procName) {
 	vector<pair<string, string>> fileNames;
-	for (const auto& elem : accessedFiles) { 
-	fileNames.push_back(elem.first); 
+	for (const auto& elem : accessedFiles) {
+		fileNames.push_back(elem.first);
 	}
 	for (const pair<string, string>& fileName : fileNames) {
 		if (fileName.second == procName) {
-			if (const int result = file_close(fileName.first, fileName.second) != 0) { 
-			return result; 
+			if (const int result = file_close(fileName.first, fileName.second) != 0) {
+				return result;
 			}
 		}
 	}
@@ -329,26 +278,17 @@ int FileManager::file_close_all(const string& procName) {
 
 int FileManager::file_close_all() {
 	vector<pair<string, string>> fileNames;
-	for (const auto& elem : accessedFiles) { 
-	fileNames.push_back(elem.first); 
+	for (const auto& elem : accessedFiles) {
+		fileNames.push_back(elem.first);
 	}
 	for (const pair<string, string>& fileName : fileNames) {
 		if (const int result = file_close(fileName.first, fileName.second) != 0) {
-			return result; 
-			}
+			return result;
+		}
 	}
 
 	return FILE_ERROR_NONE;
 }
-
-void FileManager::set_messages(const bool& onOff) {
-	messages = onOff;
-}
-
-void FileManager::set_detailed_messages(const bool&  onOff) {
-	detailedMessages = onOff;
-}
-
 
 
 //Wyswietlanie informacji
@@ -372,13 +312,13 @@ void FileManager::display_root_directory_info() {
 
 int FileManager::display_file_info(const string& name) {
 
-	if (name.empty()) { 
-	return FILE_ERROR_EMPTY_NAME; 
+	if (name.empty()) {
+		return FILE_ERROR_EMPTY_NAME;
 	}
-	
+
 	const auto fileIterator = fileSystem.rootDirectory.find(name);
-	if (fileIterator == fileSystem.rootDirectory.end()) { 
-	return FILE_ERROR_NOT_FOUND; 
+	if (fileIterator == fileSystem.rootDirectory.end()) {
+		return FILE_ERROR_NOT_FOUND;
 	}
 
 	auto file = &fileSystem.inodeTable[fileIterator->second];
@@ -389,8 +329,6 @@ int FileManager::display_file_info(const string& name) {
 		cout << " |   Numer I-wezla : " << fileIterator->second << '\n';
 		cout << " |  Rozmiar danych : " << file->realSize << " Bytes\n";
 		cout << " |         Rozmiar : " << file->blocksOccupied*BLOCK_SIZE << " Bytes\n";
-		cout << " |       Stworzono : " << file->creationTime << '\n';
-		cout << " |   Zmodyfikowano : " << file->modificationTime << "\n";
 		cout << " |\n";
 		cout << " | Indeksy w pliku : ";
 		for (const auto& elem : file->directBlocks) {

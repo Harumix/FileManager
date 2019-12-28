@@ -1,7 +1,5 @@
 #pragma once
 
-#define _CRT_SECURE_NO_WARNINGS
-
 #include <string>
 #include <array>
 #include <bitset>
@@ -9,11 +7,9 @@
 #include <unordered_map>
 #include <map>
 
- //Do u¿ywania przy funkcji open (nazwy mówi¹ same za siebie)
-#define FILE_OPEN_R_MODE  1 //01
-#define FILE_OPEN_W_MODE  2 //10
-
-//Do u¿ycia przy obs³udze b³êdów
+#define FILE_OPEN_R_MODE  1 
+#define FILE_OPEN_W_MODE  2 
+#define _CRT_SECURE_NO_WARNINGS
 #define FILE_ERROR_NONE				0
 #define FILE_ERROR_EMPTY_NAME		1
 #define FILE_ERROR_NAME_USED		2
@@ -25,41 +21,27 @@
 #define FILE_ERROR_SYNC				8
 #define FILE_ERROR_NOT_R_MODE		9
 #define FILE_ERROR_NOT_W_MODE		10
-
 #define FILE_SYNC_WAITING 30
 
-//Klasa zarz¹dcy przestrzeni¹ dyskow¹ i systemem plików
 class FileManager {
 private:
-	//--------------------------- Aliasy ------------------------
 	using u_int = unsigned int;
 	using u_short_int = unsigned short int;
 
-
-
-	//--------------- Definicje sta³ych statycznych -------------
-
+	//Do edycji 
 	static const uint8_t BLOCK_SIZE = 32;	   		//Rozmiar bloku (bajty)
 	static const u_short_int DISK_CAPACITY = 1024;	//Pojemnoœæ dysku (bajty)
 	static const uint8_t BLOCK_INDEX_NUMBER = 3;	//Wartoœæ oznaczaj¹ca d³ugoœæ pola blockDirect
 	static const uint8_t INODE_NUMBER_LIMIT = 32;	//Maksymalna iloœæ elementów w katalogu
-
 	static const bool BLOCK_FREE = false;           //Wartoœæ oznaczaj¹ca wolny blok
 	static const bool BLOCK_OCCUPIED = !BLOCK_FREE; //Wartoœæ oznaczaj¹ca zajêty blok
 
 	//Maksymalny rozmiar danych
 	static const u_short_int MAX_DATA_SIZE = (BLOCK_INDEX_NUMBER + BLOCK_SIZE / 2)*BLOCK_SIZE;
-
 	//Maksymalny rozmiar pliku (wliczony blok indeksowy)
 	static const u_short_int MAX_FILE_SIZE = MAX_DATA_SIZE + BLOCK_SIZE;
 
-
-
-	//---------------- Definicje struktur i klas ----------------
-
-	//Klasa i-wêz³a - zawiera podstawowe informacje o pliku
 	struct Inode {
-		//Podstawowe informacje
 		uint8_t blocksOccupied = 0;  //Iloœæ zajmowanych bloków
 		u_short_int realSize = 0;    //Rzeczywisty rozmiar pliku (rozmiar danych)
 		std::array<u_int, BLOCK_INDEX_NUMBER> directBlocks{};	//Bezpoœrednie indeksy
@@ -76,25 +58,24 @@ private:
 		//Tablica reprezentuj¹ca przestrzeñ dyskow¹ (jeden indeks - jeden bajt)
 		std::array<char, DISK_CAPACITY> space{};
 
-		//----------------------- Konstruktor -----------------------
 		Disk();
 
-		//-------------------------- Metody -------------------------
 		void write(const u_short_int& begin, const std::string& data);
 		void write(const u_short_int& begin, const std::array<u_int, BLOCK_SIZE / 2>& data);
 
 		const std::string read_str(const u_int& begin) const;
 		const std::array<u_int, BLOCK_SIZE / 2> read_arr(const u_int& begin) const;
-	} disk; //Struktura dysku
+	} disk; 
+	
+	//Struktura dysku
 	struct FileSystem {
 		u_int freeSpace{ DISK_CAPACITY }; //Zawiera informacje o iloœci wolnego miejsca na dysku (bajty)
 
 		//Wektor bitowy bloków (domyœlnie: 0 - wolny blok, 1 - zajêty blok)
 		std::bitset<DISK_CAPACITY / BLOCK_SIZE> bitVector;
 
-		/**
-		 Tablica i-wêz³ów
-		 */
+		
+		//Tablica i-wêz³ów
 		std::array<Inode, INODE_NUMBER_LIMIT> inodeTable;
 		//Pomocnicza tablica 'zajêtoœci' i-wêz³ów (1 - zajêty, 0 - wolny).
 		std::bitset<INODE_NUMBER_LIMIT> inodeBitVector;
@@ -105,7 +86,7 @@ private:
 		u_int get_free_inode_id();
 
 		void reset();
-	} fileSystem; //System plików
+	} fileSystem; 
 
 	//Klasa odczytu/zapisu
 	class FileIO {
@@ -137,232 +118,78 @@ private:
 		const std::bitset<2> get_flags() const;
 	};
 
-
-
-	//------------------- Definicje zmiennych -------------------
-	bool messages = false; //Zmienna do w³¹czania/wy³¹czania powiadomieñ
-	bool detailedMessages = false; //Zmienna do w³¹czania/wy³¹czania szczegó³owych powiadomieñ
-
 	//Mapa dostêpu dla poszczególnych plików i procesów
 	//Klucz   - para nazwa pliku, nazwa procesu
 	std::map<std::pair<std::string, std::string>, FileIO> accessedFiles;
 
-	//Inne modu³y
-
-
 public:
-	//----------------------- Konstruktor -----------------------
-	/**
-		Konstruktor domyœlny. Przypisuje do obecnego katalogu katalog g³ówny.
-	*/
 	explicit FileManager() = default;
 
-
-
-	//-------------------- Podstawowe Metody --------------------
-	/**
-		Tworzy plik o podanej nazwie w obecnym katalogu.\n
-		Po stworzeniu plik jest otwarty w trybie do zapisu.
-
-		@param fileName Nazwa pliku.
-		@param procName Nazwa procesu tworz¹cego.
-		@return Kod b³êdu. 0 oznacza brak b³êdu.
-	*/
+	//Tworzy plik o podanej nazwie w obecnym katalogu. Po stworzeniu plik jest otwarty w trybie do zapisu.
 	int file_create(const std::string& fileName, const std::string& procName);
 
-	/**
-		Zapisuje podane dane w danym pliku usuwaj¹c poprzedni¹ zawartoœæ.
-
-		@param fileName Nazwa pliku.
-		@param procName Nazwa procesu, który chce zapisaæ do pliku.
-		@param data Dane do zapisu.
-		@return Kod b³êdu. 0 oznacza brak b³êdu.
-	*/
+	//Zapisuje podane dane w danym pliku usuwaj¹c poprzedni¹ zawartoœæ.
 	int file_write(const std::string& fileName, const std::string& procName, const std::string& data);
 
-	/**
-		Dopisuje podane dane na koniec pliku.
-
-		@param fileName Nazwa pliku.
-		@param procName Nazwa procesu, który chce dopisaæ do pliku.
-		@param data Dane do zapisu.
-		@return Kod b³êdu. 0 oznacza brak b³êdu.
-	*/
+	//Dopisuje podane dane na koniec pliku.
 	int file_append(const std::string& fileName, const std::string& procName, const std::string& data);
 
-	/**
-		Odczytuje podan¹ liczbê bajtów z pliku. Po odczycie przesuwa siê wskaŸnik odczytu.\n
-		Aby zresetowaæ wskaŸnik odczytu nale¿y ponownie otworzyæ plik.
-
-		@param fileName Nazwa pliku.
-		@param procName Nazwa procesu, który chce odczytaæ z pliku.
-		@param byteNumber Iloœæ bajtów do odczytu.
-		@param result Miejsce do zapisania odczytanych danych.
-		@return Kod b³êdu. 0 oznacza brak b³êdu.
-	*/
+	//Odczytuje podan¹ liczbê bajtów z pliku. Po odczycie przesuwa siê wskaŸnik odczytu.
 	int file_read(const std::string& fileName, const std::string& procName, const u_short_int& byteNumber, std::string& result);
 
-	/**
-		Odczytuje ca³e dane z pliku.
-
-		@param fileName Nazwa pliku.
-		@param procName Nazwa procesu, który chce odczytaæ z pliku.
-		@param result Miejsca do zapisania odczytanych danych.
-		@return Kod b³êdu. 0 oznacza brak b³êdu.
-	*/
+	//Odczytuje ca³e dane z pliku.
 	int file_read_all(const std::string& fileName, const std::string& procName, std::string& result);
 
-	/**
-		Usuwa plik o podanej nazwie znajduj¹cy siê w obecnym katalogu.\n
-		Plik jest wymazywany z katalogu g³ównego oraz wektora bitowego.
-
-		@param fileName Nazwa pliku.
-		@param procName Nazwa procesu, który chce usun¹æ pliku.
-		@return Kod b³êdu. 0 oznacza brak b³êdu.
-	*/
+	//Usuwa plik o podanej nazwie znajduj¹cy siê w obecnym katalogu.\n
 	int file_delete(const std::string& fileName, const std::string& procName);
 
-	/**
-		Otwiera plik z podanym trybem dostêpu:
-		- R (read) - do odczytu
-		- W (write) - do zapisu
-		- RW (read/write) - do odczytu i zapisu
-
-		@param fileName Nazwa pliku.
-		@param procName Nazwa procesu tworz¹cego.
-		@param mode Tryb dostêpu do pliku.
-		@return Kod b³êdu. 0 oznacza brak b³êdu.
-	*/
+	//Otwiera plik z podanym trybem dostêpu:
 	int file_open(const std::string& fileName, const std::string& procName, const unsigned int& mode);
 
-	/**
-		Zamyka plik o podanej nazwie.
-
-		@param fileName Nazwa pliku.
-		@param procName Nazwa procesu, który zamkn¹æ pliku.
-		@return Kod b³êdu. 0 oznacza brak b³êdu.
-	*/
+	//Zamyka plik o podanej nazwie.
 	int file_close(const std::string& fileName, const std::string& procName);
 
-
-
-	//--------------------- Dodatkowe metody --------------------
-
-	/**
-		Sprawdza czy plik istnieje.
-
-		@param fileName Nazwa pliku do znalezienia.
-		@return Kod b³êdu. 0 oznacza brak b³êdu.
-	*/
+	//Sprawdza czy plik istnieje.
 	bool file_exists(const std::string& fileName);
 
-	/**
-		Zamyka wszystkie pliki dla danego procesu.
-
-		@param procName Nazwa procesu dla którego maj¹ byæ zamkniête pliki.
-		@return Kod b³êdu. 0 oznacza brak b³êdu.
-	*/
+	//Zamyka wszystkie pliki dla danego procesu.
 	int file_close_all(const std::string& procName);
 
-	/**
-		Zamyka wszystkie pliki.
-
-		@return Kod b³êdu. 0 oznacza brak b³êdu.
-	*/
+	//Zamyka wszystkie pliki.
 	int file_close_all();
 
-	/**
-		Zmienia zmienn¹ odpowiadaj¹c¹ za wyœwietlanie komunikatów.
-		false - komunikaty wy³¹czone.
-		true - komunikaty w³¹czone.
 
-		@param onOff Czy komunikaty maj¹ byæ w³¹czone.
-		@return void.
-	*/
-	void set_messages(const bool& onOff);
-
-	/**
-		Zmienia zmienn¹ odpowiadaj¹c¹ za wyœwietlanie szczegó³owych komunikatów.
-		false - komunikaty wy³¹czone.
-		true - komunikaty w³¹czone.
-
-		@param onOff Czy komunikaty maj¹ byæ w³¹czone.
-		@return void.
-	*/
-	void set_detailed_messages(const bool& onOff);
-
-
-
-	//------------------ Metody do wyœwietlania -----------------
-
-	/**
-		Wyœwietla parametry systemu plików.
-
-		@return void.
-	*/
+	//Wyœwietla parametry systemu plików.
 	static void display_file_system_params();
 
-	/**
-		Wyœwietla informacje o wybranym katalogu.
-
-		@return void.
-	*/
+	//Wyœwietla informacje o wybranym katalogu.
 	void display_root_directory_info();
 
-	/**
-		Wyœwietla informacje o pliku.
-
-		@return True, jeœli operacja siê uda³a lub false, jeœli operacja nie powiod³a siê.
-	*/
+	//Wyœwietla informacje o pliku.
 	int display_file_info(const std::string& name);
 
-	/**
-		Wyœwietla strukturê katalogów.
-
-		@return True, jeœli operacja siê uda³a lub false, jeœli operacja nie powiod³a siê.
-	*/
+	//Wyœwietla strukturê katalogów.
 	void display_root_directory();
 
-	/**
-		Wyœwietla zawartoœæ dysku jako znaki.
-		'.' - puste pole.
-
-		@return void.
-	*/
+	//Wyœwietla zawartoœæ dysku jako znaki.
 	void display_disk_content_char();
 
-	/**
-		Wyœwietla wektor bitowy.
-
-		@return void.
-	*/
+	//Wyœwietla wektor bitowy.
 	void display_bit_vector();
 
 	void display_block_char(const unsigned int& block);
 
-
-
-	//------ KOLEJNE METODY MA£O KOGO POWINNY OBCHODZIÆ ---------
 private:
-	//------------------- Metody Sprawdzaj¹ce -------------------
 
 	bool check_if_name_used(const std::string& name);
-
+	
 	bool check_if_enough_space(const u_int& dataSize) const;
-
-
-
-	//-------------------- Metody Obliczaj¹ce -------------------
 
 	static u_int calculate_needed_blocks(const size_t& dataSize);
 
 	size_t calculate_directory_size();
 
 	size_t calculate_directory_size_on_disk();
-
-
-
-	//--------------------- Metody Alokacji ---------------------
 
 	void file_truncate(Inode* file, const u_int& neededBlocks);
 
@@ -379,10 +206,6 @@ private:
 	const std::vector<u_int> find_unallocated_blocks_best_fit(const u_int& blockNumber);
 
 	const std::vector<u_int> find_unallocated_blocks(const u_int& blockNumber);
-
-
-
-	//----------------------- Metody Inne -----------------------
 
 	bool is_file_opened_write(const std::string& fileName);
 
