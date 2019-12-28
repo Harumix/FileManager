@@ -18,19 +18,6 @@ ostream& operator << (ostream& os, const vector<string>& strVec) {
 	return os;
 }
 
-ostream& operator << (ostream& os, const tm& time) {
-	os << time.tm_hour << ':' << setfill('0') << setw(2) << time.tm_min
-		<< ' ' << setfill('0') << setw(2) << time.tm_mday << '.'
-		<< setfill('0') << setw(2) << time.tm_mon << '.' << time.tm_year;
-	return os;
-}
-
-bool operator == (const tm& time1, const tm& time2) {
-	return time1.tm_hour == time2.tm_hour && time1.tm_isdst == time2.tm_isdst && time1.tm_mday == time2.tm_mday && time1
-		.tm_min == time2.tm_min && time1.tm_mon == time2.tm_mon && time1.tm_sec == time2.tm_sec && time1.tm_wday ==
-		time2.tm_wday && time1.tm_yday == time2.tm_yday && time1.tm_year == time2.tm_year;
-}
-
 int FileManager::file_create(const string& fileName, const string& procName) {
 
 	//Sprawdzenie poprawnosci
