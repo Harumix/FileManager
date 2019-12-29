@@ -301,7 +301,6 @@ void FileManager::file_add_indexes(Inode* file, const vector<u_int>& blocks) {
 				disk.write(index * BLOCK_SIZE, indirectBlocks);
 				fileSystem.bitVector[index] = BLOCK_OCCUPIED;
 				fileSystem.freeSpace -= BLOCK_SIZE;
-				if (detailedMessages) { cout << "Stworzono blok indeksowy pod indeksem: " << index << '\n'; }
 			}
 		}
 	}
@@ -351,7 +350,6 @@ void FileManager::file_allocation_increase(Inode* file, const u_int& neededBlock
 		if (file->blocksOccupied > 0) { file_deallocate(file); }
 		file_allocate_blocks(file, find_unallocated_blocks(neededBlocks));
 	}
-	if (detailedMessages) { cout << "Zwiekszono plik do rozmiaru " << file->blocksOccupied*BLOCK_SIZE << " Bajt.\n"; }
 }
 
 void FileManager::file_deallocate(Inode* file) {
@@ -391,14 +389,6 @@ void FileManager::file_deallocate(Inode* file) {
 		file->directBlocks.fill(-1);
 		file->blocksOccupied = 0;
 	}
-	if (detailedMessages) {
-		if (!freedBlocks.empty()) {
-			sort(freedBlocks.begin(), freedBlocks.end());
-			cout << "Zwolniono bloki: ";
-			for (u_int i = 0; i < freedBlocks.size(); i++) { cout << freedBlocks[i] << (i < freedBlocks.size() - 1 ? ", " : ""); }
-			cout << '\n';
-		}
-	}
 }
 
 void FileManager::file_allocate_blocks(Inode* file, const vector<u_int>& blocks) {
@@ -409,11 +399,6 @@ void FileManager::file_allocate_blocks(Inode* file, const vector<u_int>& blocks)
 	file->blocksOccupied += static_cast<int8_t>(blocks.size());
 
 	file_add_indexes(file, blocks);
-
-	if (detailedMessages) {
-		cout << "Zaalokowano bloki: ";
-		for (u_int i = 0; i < blocks.size(); i++) { cout << blocks[i] << (i < blocks.size() - 1 ? ", " : ".\n"); }
-	}
 }
 
 const vector<u_int> FileManager::find_unallocated_blocks_fragmented(u_int blockNumber) {
