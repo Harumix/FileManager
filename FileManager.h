@@ -23,29 +23,32 @@
 #define FILE_ERROR_NOT_W_MODE		10
 #define FILE_SYNC_WAITING 30
 
+//G³ówna klasa
 class FileManager {
 private:
 	using u_int = unsigned int;
 	using u_short_int = unsigned short int;
 
-	//Do edycji 
-	static const uint8_t BLOCK_SIZE = 32;	   		//Rozmiar bloku (bajty)
-	static const u_short_int DISK_CAPACITY = 1024;	//Pojemnoœæ dysku (bajty)
-	static const uint8_t BLOCK_INDEX_NUMBER = 3;	//Wartoœæ oznaczaj¹ca d³ugoœæ pola blockDirect
+	//Definicje sta³ych wartoœci
+	static const uint8_t BLOCK_SIZE = 32;	   		//Rozmiar bloku w bajtach
+	static const u_short_int DISK_CAPACITY = 1024;	//Pojemnoœæ dysku w bajtach
+	static const uint8_t BLOCK_INDEX_NUMBER = 3;	//Wielkoœc bloku indeksowego (dlugosc pola blockDirect)
 	static const uint8_t INODE_NUMBER_LIMIT = 32;	//Maksymalna iloœæ elementów w katalogu
 	static const bool BLOCK_FREE = false;           //Wartoœæ oznaczaj¹ca wolny blok
 	static const bool BLOCK_OCCUPIED = !BLOCK_FREE; //Wartoœæ oznaczaj¹ca zajêty blok
+	static const u_short_int MAX_DATA_SIZE = (BLOCK_INDEX_NUMBER + BLOCK_SIZE / 2)*BLOCK_SIZE; //Maksymalny rozmiar danych
+	static const u_short_int MAX_FILE_SIZE = MAX_DATA_SIZE + BLOCK_SIZE; 					   //Maksymalny rozmiar pliku 
 
-	//Maksymalny rozmiar danych
-	static const u_short_int MAX_DATA_SIZE = (BLOCK_INDEX_NUMBER + BLOCK_SIZE / 2)*BLOCK_SIZE;
-	//Maksymalny rozmiar pliku (wliczony blok indeksowy)
-	static const u_short_int MAX_FILE_SIZE = MAX_DATA_SIZE + BLOCK_SIZE;
-
+	//Klasa zawierajaca podstawowe informacje o pliku
 	struct Inode {
 		uint8_t blocksOccupied = 0;  //Iloœæ zajmowanych bloków
-		u_short_int realSize = 0;    //Rzeczywisty rozmiar pliku (rozmiar danych)
+		u_short_int realSize = 0;    //Rozmiar danych
 		std::array<u_int, BLOCK_INDEX_NUMBER> directBlocks{};	//Bezpoœrednie indeksy
-		u_int singleIndirectBlocks; //Indeks bloku indeksowego, zpisywanego na dysku
+		u_int singleIndirectBlocks; //Numer bloku indeksowego
+		tm creationTime = tm();		//Czas i data utworzenia
+		tm modificationTime = tm(); //Czas i data ostatniej modyfikacji pliku
+
+		bool opened = false;
 
 		Inode();
 
@@ -54,32 +57,25 @@ private:
 		void clear();
 	};
 
+	//Klasa odpowiedzialna za dysk
 	struct Disk {
-		//Tablica reprezentuj¹ca przestrzeñ dyskow¹ (jeden indeks - jeden bajt)
-		std::array<char, DISK_CAPACITY> space{};
+		std::array<char, DISK_CAPACITY> space{}; //Tablica reprezentuj¹ca przestrzeñ dyskow¹, jednemu indeksowi przypada jeden bajt
 
 		Disk();
 
 		void write(const u_short_int& begin, const std::string& data);
 		void write(const u_short_int& begin, const std::array<u_int, BLOCK_SIZE / 2>& data);
-
 		const std::string read_str(const u_int& begin) const;
 		const std::array<u_int, BLOCK_SIZE / 2> read_arr(const u_int& begin) const;
-	} disk; 
-	
-	//Struktura dysku
+		
+	} disk;
+	//Klasa odpowiedzialna za system plikow system plików
 	struct FileSystem {
 		u_int freeSpace{ DISK_CAPACITY }; //Zawiera informacje o iloœci wolnego miejsca na dysku (bajty)
-
-		//Wektor bitowy bloków (domyœlnie: 0 - wolny blok, 1 - zajêty blok)
-		std::bitset<DISK_CAPACITY / BLOCK_SIZE> bitVector;
-
-		
-		//Tablica i-wêz³ów
-		std::array<Inode, INODE_NUMBER_LIMIT> inodeTable;
-		//Pomocnicza tablica 'zajêtoœci' i-wêz³ów (1 - zajêty, 0 - wolny).
-		std::bitset<INODE_NUMBER_LIMIT> inodeBitVector;
-		std::unordered_map<std::string, u_int> rootDirectory;
+		std::bitset<DISK_CAPACITY / BLOCK_SIZE> bitVector; //Wektor bitowy bloków
+		std::array<Inode, INODE_NUMBER_LIMIT> inodeTable; //Tablica Inode'ów
+		std::bitset<INODE_NUMBER_LIMIT> inodeBitVector; //Tablica 'zajêtoœci' wêz³ów
+		std::unordered_map<std::string, u_int> rootDirectory; //Tablica przechowuj¹ca pliki w katalogu
 
 		FileSystem();
 
@@ -118,79 +114,67 @@ private:
 		const std::bitset<2> get_flags() const;
 	};
 
+
 	//Mapa dostêpu dla poszczególnych plików i procesów
 	//Klucz   - para nazwa pliku, nazwa procesu
+	//Wartoœæ - semafor przypisany danemu procesowi
 	std::map<std::pair<std::string, std::string>, FileIO> accessedFiles;
+
+
 
 public:
 	explicit FileManager() = default;
 
-	//Tworzy plik o podanej nazwie w obecnym katalogu. Po stworzeniu plik jest otwarty w trybie do zapisu.
+	//G³ówne metody
 	int file_create(const std::string& fileName, const std::string& procName);
 
-	//Zapisuje podane dane w danym pliku usuwaj¹c poprzedni¹ zawartoœæ.
 	int file_write(const std::string& fileName, const std::string& procName, const std::string& data);
 
-	//Dopisuje podane dane na koniec pliku.
 	int file_append(const std::string& fileName, const std::string& procName, const std::string& data);
 
-	//Odczytuje podan¹ liczbê bajtów z pliku. Po odczycie przesuwa siê wskaŸnik odczytu.
 	int file_read(const std::string& fileName, const std::string& procName, const u_short_int& byteNumber, std::string& result);
 
-	//Odczytuje ca³e dane z pliku.
 	int file_read_all(const std::string& fileName, const std::string& procName, std::string& result);
 
-	//Usuwa plik o podanej nazwie znajduj¹cy siê w obecnym katalogu.\n
 	int file_delete(const std::string& fileName, const std::string& procName);
 
-	//Otwiera plik z podanym trybem dostêpu:
 	int file_open(const std::string& fileName, const std::string& procName, const unsigned int& mode);
 
-	//Zamyka plik o podanej nazwie.
 	int file_close(const std::string& fileName, const std::string& procName);
 
-	//Sprawdza czy plik istnieje.
 	bool file_exists(const std::string& fileName);
 
-	//Zamyka wszystkie pliki dla danego procesu.
-	int file_close_all(const std::string& procName);
 
-	//Zamyka wszystkie pliki.
-	int file_close_all();
+	//Metody odpowiedzialne za wyswietlanie informacji
 
-
-	//Wyœwietla parametry systemu plików.
 	static void display_file_system_params();
 
-	//Wyœwietla informacje o wybranym katalogu.
 	void display_root_directory_info();
 
-	//Wyœwietla informacje o pliku.
 	int display_file_info(const std::string& name);
 
-	//Wyœwietla strukturê katalogów.
 	void display_root_directory();
-
-	//Wyœwietla zawartoœæ dysku jako znaki.
+	
 	void display_disk_content_char();
 
-	//Wyœwietla wektor bitowy.
 	void display_bit_vector();
 
 	void display_block_char(const unsigned int& block);
 
 private:
-
+	//Metody sluzace do sprawdzania
 	bool check_if_name_used(const std::string& name);
-	
+
 	bool check_if_enough_space(const u_int& dataSize) const;
 
+	//Metody sluzace do obliczej
 	static u_int calculate_needed_blocks(const size_t& dataSize);
 
 	size_t calculate_directory_size();
 
 	size_t calculate_directory_size_on_disk();
 
+	//Metody odpowiedzialne za alokacje
 	void file_truncate(Inode* file, const u_int& neededBlocks);
 
 	void file_add_indexes(Inode* file, const std::vector<u_int>& blocks);
@@ -207,6 +191,7 @@ private:
 
 	const std::vector<u_int> find_unallocated_blocks(const u_int& blockNumber);
 
+	//Metody dodatkowe
 	bool is_file_opened_write(const std::string& fileName);
 
 	int file_accessing_proc_count(const std::string& fileName);
