@@ -113,7 +113,7 @@ int FileManager::writeToFile(std::string name, std::string data) {
 	for (auto i : openFiles) {
 
 		if (mainCatalog[i].name == name) {
-
+			mainCatalog[i].size+=data;
 			for (int j = 0; j < data.size(); j++) {
 
 				block = SearchIndexBlock(i);
@@ -196,6 +196,12 @@ int FileManager::renameFile(std::string name, std::string newName) {
 		return 0;
 	}
 	return 0;
+}
+
+int FileManager::longFile(std::string name) {
+
+	for(int i=0;i<mainCatalog.size();i++){
+		if(mainCatalog[i].name == name) return mainCatalog[i].size;
 }
 
 std::stringstream FileManager::displayFileSystemParams() {

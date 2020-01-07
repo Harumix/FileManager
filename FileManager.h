@@ -67,6 +67,8 @@ class FileManager {
 	std::string readFileAll(std::string name);
 
 	int renameFile(std::string name, std::string newName);
+	
+	int longFile(std::string name);
 
 	std::stringstream displayFileSystemParams();
 
