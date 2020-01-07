@@ -5,6 +5,7 @@
 #include <sstream>  
 
 class FileManager {
+	public:
 	using u_int = unsigned int;
 	using u_short_int = unsigned short int;
 
@@ -13,6 +14,7 @@ class FileManager {
 	static const u_short_int DISK_CAPACITY = 1024;
 
 	struct File {
+		public:
 		std::string name;
 		int indexBlockNumber;
 		int size = 0;
@@ -36,39 +38,41 @@ class FileManager {
 	std::array<int, DISK_CAPACITY / BLOCK_SIZE> openFiles;
 	std::array<bool, DISK_CAPACITY / BLOCK_SIZE> freeIndexes;
 
-	int SearchFreeBlock();
+	
+	
+	int searchFreeBlock();
 
-	int SearchFileId(std::string name);
+	int searchFileId(std::string name);
 
-	int IndexBlockFillZero(int ind);
+	int indexBlockFillZero(int ind);
 
-	int SearchIndexBlock(int i);
+	int searchIndexBlock(int i);
 
-	bool IsNameUsed(std::string name);
+	bool isNameUsed(std::string name);
 
-	int CreateFile(std::string name);
+	int createFile(std::string name);
 
-	int DeleteFile(std::string name);
+	int deleteFile(std::string name);
 
-	int OpenFile(std::string name);
+	int openFile(std::string name);
 
-	int CloseFile(std::string name);
+	int closeFile(std::string name);
 
-	int WriteToFile(std::string name, std::string data);
+	int writeToFile(std::string name, std::string data);
 
-	int ReadFileByte(std::string name, int howMuch);
+	int readFileByte(std::string name, int howMuch);
 
-	int SendFileByte(std::string name, int howMuch);
+	int sendFileByte(std::string name, int howMuch);
 
-	std::string ReadFileAll(std::string name);
+	std::string readFileAll(std::string name);
 
-	int RenameFile(std::string name, std::string newName);
+	int renameFile(std::string name, std::string newName);
 
-	std::stringstream display_file_system_params();
+	std::stringstream displayFileSystemParams();
 
-	std::stringstream display_file_info(const std::string& name);
+	std::stringstream displayFileInfo(const std::string& name);
 
-	std::stringstream display_disk_content_char();
+	std::stringstream displayDiskContentChar();
 	
 	FileManager() = default;
 };

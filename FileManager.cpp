@@ -10,7 +10,7 @@ using u_int = unsigned int;
 using u_short_int = unsigned short int;
 using u_char = unsigned char;
 
-int FileManager::SearchFreeBlock() {
+int FileManager::searchFreeBlock() {
 
 	for (int i = 0; i < freeIndexes.size(); i++) {
 		if (freeIndexes[i] == false) {
@@ -21,7 +21,7 @@ int FileManager::SearchFreeBlock() {
 	}
 }
 
-int FileManager::SearchIndexBlock(int i) {
+int FileManager::searchIndexBlock(int i) {
 	int block;
 	int block2;
 	for (int j = 0; j < 8; j++) {
@@ -38,7 +38,7 @@ int FileManager::SearchIndexBlock(int i) {
 
 }
 
-bool FileManager::IsNameUsed(std::string name) {
+bool FileManager::isNameUsed(std::string name) {
 	for (int i = 0; i < mainCatalog.size(); i++) {
 		if (mainCatalog[i].name == name) return true;
 	}
@@ -47,7 +47,7 @@ bool FileManager::IsNameUsed(std::string name) {
 
 }
 
-int FileManager::IndexBlockFillZero(int ind) {
+int FileManager::indexBlockFillZero(int ind) {
 	for (int i = 0; i < 8; i++) {
 		disk[ind * BLOCK_SIZE + i] = 0;
 	}
@@ -55,14 +55,14 @@ int FileManager::IndexBlockFillZero(int ind) {
 	return 0;
 }
 
-int FileManager::SearchFileId(std::string name) {
+int FileManager::searchFileId(std::string name) {
 	for (int i = 0; i < mainCatalog.size(); i++) {
 		if (mainCatalog[i].name == name) return i;
 	}
 	return -1;
 }
 
-int FileManager::CreateFile(std::string name) {
+int FileManager::createFile(std::string name) {
 
 	//Czesc sprawdzajaca
 	if (IsNameUsed(name)) return -1;
@@ -78,14 +78,14 @@ int FileManager::CreateFile(std::string name) {
 	mainCatalog.push_back(newFile);
 }
 
-int FileManager::DeleteFile(std::string name) {
+int FileManager::deleteFile(std::string name) {
 	int ind = SearchFileId(name);
 	CloseFile(name);
 	mainCatalog.erase(mainCatalog.begin() + ind);
 	return 0;
 }
 
-int FileManager::OpenFile(std::string name) {
+int FileManager::openFile(std::string name) {
 	int ind = SearchFileId(name);
 	for (int i = 0; i < openFiles.size(); i++) {
 		if (openFiles[i] == -1) {
@@ -96,7 +96,7 @@ int FileManager::OpenFile(std::string name) {
 	return 0;
 }
 
-int FileManager::CloseFile(std::string name) {
+int FileManager::closeFile(std::string name) {
 	int ind = SearchFileId(name);
 	for (int i = 0; i < openFiles.size(); i++) {
 		if (openFiles[i] == ind) {
@@ -107,7 +107,7 @@ int FileManager::CloseFile(std::string name) {
 	return 0;
 }
 
-int FileManager::WriteToFile(std::string name, std::string data) {
+int FileManager::writeToFile(std::string name, std::string data) {
 	int block;
 
 	for (auto i : openFiles) {
@@ -126,7 +126,7 @@ int FileManager::WriteToFile(std::string name, std::string data) {
 	return 0;
 }
 
-int FileManager::SendFileByte(std::string name, int howMuch) {
+int FileManager::sendFileByte(std::string name, int howMuch) {
 	int block;
 	char result;
 
@@ -146,7 +146,7 @@ int FileManager::SendFileByte(std::string name, int howMuch) {
 	}
 }
 
-int FileManager::ReadFileByte(std::string name, int howMuch) {
+int FileManager::readFileByte(std::string name, int howMuch) {
 	for (auto i : openFiles) {
 
 		if (mainCatalog[i].name == name) {
@@ -164,7 +164,7 @@ int FileManager::ReadFileByte(std::string name, int howMuch) {
 	}
 }
 
-std::string FileManager::ReadFileAll(std::string name) {
+std::string FileManager::readFileAll(std::string name) {
 	int block;
 	std::string result;
 
@@ -186,7 +186,7 @@ std::string FileManager::ReadFileAll(std::string name) {
 	}
 }
 
-int FileManager::RenameFile(std::string name, std::string newName) {
+int FileManager::renameFile(std::string name, std::string newName) {
 
 	for (int i = 0; i < mainCatalog.size(); i++) {
 		if (mainCatalog[i].name == name) {
@@ -198,7 +198,7 @@ int FileManager::RenameFile(std::string name, std::string newName) {
 	return 0;
 }
 
-std::stringstream FileManager::display_file_system_params() {
+std::stringstream FileManager::displayFileSystemParams() {
 	std::stringstream ss;
 
 	ss << " |       Pojemnosc dysku : " << DISK_CAPACITY << " B\n";
@@ -209,7 +209,7 @@ std::stringstream FileManager::display_file_system_params() {
 	return ss;
 }
 
-std::stringstream FileManager::display_file_info(const std::string& name) {
+std::stringstream FileManager::displayFileInfo(const std::string& name) {
 	std::stringstream ss;
 
 	ss << " |       Nazwa Pliku : " << name << "\n";
@@ -220,7 +220,7 @@ std::stringstream FileManager::display_file_info(const std::string& name) {
 	return ss;
 }
 
-std::stringstream FileManager::display_disk_content_char() {
+std::stringstream FileManager::displayDiskContentChar() {
 	std::stringstream ss;
 
 	for (u_int i = 0; i < DISK_CAPACITY / BLOCK_SIZE; i++) {
